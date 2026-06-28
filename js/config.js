@@ -53,14 +53,15 @@ const FLAGS = {
 
 // ── Nombres de ronda ───────────────────────────────────────────────────────
 const ROUND_NAMES = {
-  'LAST_16':       'Ronda de 32',
+  'LAST_32':       'Ronda de 32',    // nuevo en WC 2026 (48 equipos)
+  'LAST_16':       'Octavos de Final',
   'QUARTER_FINALS':'Cuartos de Final',
   'SEMI_FINALS':   'Semifinales',
   'THIRD_PLACE':   '3er Lugar',
   'FINAL':         'Final'
 };
 
-const ROUND_ORDER = ['LAST_16', 'QUARTER_FINALS', 'SEMI_FINALS', 'FINAL'];
+const ROUND_ORDER = ['LAST_32', 'LAST_16', 'QUARTER_FINALS', 'SEMI_FINALS', 'FINAL'];
 
 // ── Utilidades globales ────────────────────────────────────────────────────
 function getFlag(name) {

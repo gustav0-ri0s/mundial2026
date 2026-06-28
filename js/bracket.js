@@ -1,7 +1,7 @@
 // ── Render de tarjeta de partido ───────────────────────────────────────────
 function renderMatchCard(match) {
-  const h = (match.homeTeam && match.homeTeam.name) || 'Por definir';
-  const a = (match.awayTeam && match.awayTeam.name) || 'Por definir';
+  const h = (match.homeTeam && (match.homeTeam.name || match.homeTeam.shortName || match.homeTeam.tla)) || 'Por definir';
+  const a = (match.awayTeam && (match.awayTeam.name || match.awayTeam.shortName || match.awayTeam.tla)) || 'Por definir';
   const hf = getFlag(h);
   const af = getFlag(a);
   const isTBD    = h === 'Por definir' || a === 'Por definir';

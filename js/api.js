@@ -41,7 +41,7 @@ async function _fetchViaProxy() {
 }
 
 async function _fetchDirect() {
-  const stages  = ['LAST_16', 'QUARTER_FINALS', 'SEMI_FINALS', 'THIRD_PLACE', 'FINAL'];
+  const stages  = ['LAST_32', 'LAST_16', 'QUARTER_FINALS', 'SEMI_FINALS', 'THIRD_PLACE', 'FINAL'];
   const headers = { 'X-Auth-Token': CONFIG.API_KEY };
 
   let res = await fetch(`${CONFIG.API_BASE}/competitions/WC/matches?season=2026`, { headers });
@@ -54,7 +54,7 @@ async function _fetchDirect() {
   let matches = (data.matches || []).filter(m => stages.includes(m.stage));
 
   if (matches.length === 0) {
-    res = await fetch(`${CONFIG.API_BASE}/competitions/WC/matches?stage=LAST_16`, { headers });
+    res = await fetch(`${CONFIG.API_BASE}/competitions/WC/matches?stage=LAST_32`, { headers });
     if (res.ok) {
       const d2 = await res.json();
       matches = d2.matches || [];
