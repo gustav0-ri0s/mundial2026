@@ -3,7 +3,7 @@
 const CONFIG = {
   API_KEY:          'fd01075a76f44d0d954557f521a3f9cd',
   API_BASE:         'https://api.football-data.org/v4',
-  SUPABASE_URL:     '',   // ← PENDIENTE: pega aquí tu Project URL (ej: https://xxxx.supabase.co)
+  SUPABASE_URL:     'https://tzlbxasoyreyvuuvaagk.supabase.co',
   SUPABASE_ANON_KEY:'sb_publishable_TkQLFt_lHoEiXIhmf2n3aQ_bllMh2GN',
   CACHE_TTL:        60000,   // 60 s — límite gratis de football-data.org
   AUTO_REFRESH_MS:  90000    // 90 s — refresco automático si hay partido en vivo
