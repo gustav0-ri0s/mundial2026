@@ -101,15 +101,49 @@ function triggerRefresh() {
 
 function scheduleAutoRefresh() {
   clearInterval(State._refreshTimer);
-  State._refreshTimer = setInterval(() => {
-    const hasLive = State.matchesData.some(
-      m => m.status === 'IN_PLAY' || m.status === 'PAUSED'
-    );
-    if (hasLive) {
-      clearMatchesCache();
-      loadMatchesAndRender();
+  // Revisa cada 60 s; solo pide datos si hay partido en vivo
+  State._refreshTimer = setInterval(_liveRefreshTick, 60000);
+}
+
+async function _liveRefreshTick() {
+  const hasLive = State.matchesData.some(
+    m => m.status === 'IN_PLAY' || m.status === 'PAUSED'
+  );
+  if (!hasLive) return;
+
+  clearMatchesCache();
+  try {
+    const prev = State.matchesData.map(m => ({ id: m.id, status: m.status }));
+    State.matchesData = await getKnockoutMatches();
+    renderBracket();
+    _updateLiveTimestamp();
+
+    // Detecta partidos que acaban de terminar → re-evalúa predicciones
+    const justFinished = State.matchesData.filter(m => {
+      const was = prev.find(p => p.id === m.id);
+      return was && was.status !== 'FINISHED' && m.status === 'FINISHED';
+    });
+
+    if (justFinished.length > 0) {
+      await loadUserPredictions();
+      renderBracket();
+      const activeId = document.querySelector('.tab-content.active')?.id;
+      if (activeId === 'tab-mis-predicciones') renderMyPredictions();
+      if (activeId === 'tab-ranking')          renderRanking();
     }
-  }, CONFIG.AUTO_REFRESH_MS);
+  } catch (e) {
+    console.warn('[Live] Error al actualizar:', e.message);
+  }
+}
+
+function _updateLiveTimestamp() {
+  const el = document.getElementById('live-updated');
+  if (!el) return;
+  const now = new Date().toLocaleTimeString('es-PE', {
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    timeZone: 'America/Lima'
+  });
+  el.textContent = `Actualizado: ${now} PET`;
 }
 
 // ── Modal de predicción ────────────────────────────────────────────────────

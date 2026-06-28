@@ -246,6 +246,15 @@ main { padding: 24px 20px; max-width: 1600px; margin: 0 auto; }
   letter-spacing: 1px;
   background: rgba(0,0,0,0.15);
 }
+.match-time.live {
+  color: var(--green);
+  background: rgba(34,197,94,0.08);
+  animation: livePulse 2s ease-in-out infinite;
+}
+@keyframes livePulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}
 
 .team-row {
   display: flex;

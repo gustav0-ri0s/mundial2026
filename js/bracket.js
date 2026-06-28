@@ -28,9 +28,11 @@ function renderMatchCard(match) {
   else if (predStatus === 'wrong') cardClass += ' wrong';
   else if (pred)                cardClass += ' has-prediction';
 
-  const date = new Date(match.utcDate);
-  const dateStr = date.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }) + ' ' +
-    date.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+  const date    = new Date(match.utcDate);
+  const tz      = 'America/Lima'; // GMT-5, Perú — sin horario de verano
+  const dayStr  = date.toLocaleDateString('es-PE',  { day: '2-digit', month: 'short', timeZone: tz });
+  const timeStr = date.toLocaleTimeString('es-PE',  { hour: '2-digit', minute: '2-digit', timeZone: tz });
+  const dateStr = `${dayStr} · ${timeStr}`;
 
   let timeLabel = dateStr;
   if (finished) timeLabel = '⚽ FINALIZADO';
@@ -56,7 +58,7 @@ function renderMatchCard(match) {
   const aWinner = winner === 'AWAY_TEAM';
 
   return `<div class="${cardClass}" ${clickAttr} data-match="${match.id}">
-    <div class="match-time">${timeLabel}</div>
+    <div class="match-time${inPlay ? ' live' : ''}">${timeLabel}</div>
     <div class="team-row${hWinner ? ' winner' : ''}">
       <span class="flag">${hf}</span>
       <span class="team-name${hWinner ? ' winner-name' : ''}">${hDisplay}</span>
@@ -156,8 +158,15 @@ function renderBracket() {
     : '<span class="storage-badge local" title="Predicciones guardadas localmente">💾 Local</span>';
 
   let html = statsHTML;
+  const hasLive = matches.some(m => m.status === 'IN_PLAY' || m.status === 'PAUSED');
+  const liveNote = hasLive
+    ? `<span id="live-updated" style="color:var(--green);font-size:0.75rem;margin-left:8px"></span>`
+    : '';
+
   html += `<div class="notice">
     💡 <strong>Haz clic en cualquier partido</strong> para registrar tu predicción antes de que comience.
+    Horas en hora peruana (PET · GMT-5).
+    ${liveNote}
     ${storageLabel}
     <button class="btn btn-ghost refresh-btn" onclick="triggerRefresh()">↻ Actualizar</button>
   </div>`;
