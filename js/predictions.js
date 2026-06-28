@@ -48,13 +48,27 @@ async function renderMyPredictions() {
       pill = `<span class="status-pill pill-red">✗ Fallaste</span>`;
     }
 
-    const h    = match.homeTeam && match.homeTeam.name || '?';
-    const a    = match.awayTeam && match.awayTeam.name || '?';
-    const real = result ? `${getFlag(result)} ${result}` : '—';
+    const hTeam = match.homeTeam, aTeam = match.awayTeam;
+    const h     = hTeam && hTeam.name || '?';
+    const a     = aTeam && aTeam.name || '?';
+    const hf    = getFlagFromTeam(hTeam);
+    const af    = getFlagFromTeam(aTeam);
+
+    // Bandera de la predicción: buscar el objeto equipo para usar TLA
+    const predTeam = (hTeam && hTeam.name === pred.predicted_winner) ? hTeam
+                   : (aTeam && aTeam.name === pred.predicted_winner) ? aTeam
+                   : null;
+    const predFlag = predTeam ? getFlagFromTeam(predTeam) : getFlag(pred.predicted_winner);
+
+    // Bandera del resultado real
+    const realTeam = result && ((hTeam && hTeam.name === result) ? hTeam
+                   : (aTeam && aTeam.name === result) ? aTeam : null);
+    const realFlag = realTeam ? getFlagFromTeam(realTeam) : getFlag(result || '');
+    const real = result ? `${realFlag} ${getDisplayName(result)}` : '—';
 
     rows += `<tr>
-      <td>${getFlag(h)} ${h} vs ${getFlag(a)} ${a}</td>
-      <td>${getFlag(pred.predicted_winner)} ${pred.predicted_winner}</td>
+      <td>${hf} ${getDisplayName(h)} vs ${af} ${getDisplayName(a)}</td>
+      <td>${predFlag} ${getDisplayName(pred.predicted_winner)}</td>
       <td>${real}</td>
       <td>${pill}</td>
     </tr>`;

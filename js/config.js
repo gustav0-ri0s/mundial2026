@@ -102,9 +102,69 @@ const SHORT_NAMES = {
   'China PR':               'China',
 };
 
+// ── TLA (3 letras FIFA) → ISO 3166-1 alpha-2 ──────────────────────────────
+// Genera el emoji de bandera matemáticamente: no hace falta mantener un
+// diccionario por nombre; el TLA que devuelve la API es suficiente.
+const TLA_TO_ISO = {
+  // CONMEBOL
+  'ARG':'AR','BRA':'BR','URU':'UY','COL':'CO','ECU':'EC',
+  'VEN':'VE','CHI':'CL','PAR':'PY','BOL':'BO','PER':'PE',
+  // CONCACAF
+  'USA':'US','MEX':'MX','CAN':'CA','PAN':'PA','CRC':'CR',
+  'HON':'HN','SLV':'SV','JAM':'JM','CUB':'CU','TRI':'TT',
+  'HAI':'HT','CUR':'CW','GUA':'GT','NCA':'NI',
+  // UEFA
+  'FRA':'FR','GER':'DE','ESP':'ES','POR':'PT','NED':'NL',
+  'BEL':'BE','CRO':'HR','SUI':'CH','POL':'PL','DEN':'DK',
+  'SRB':'RS','AUT':'AT','TUR':'TR','UKR':'UA','ROU':'RO',
+  'SVK':'SK','SVN':'SI','ALB':'AL','GEO':'GE','HUN':'HU',
+  'CZE':'CZ','NOR':'NO','SWE':'SE','FIN':'FI','IRL':'IE',
+  'ISL':'IS','GRE':'GR','BIH':'BA','MNE':'ME','MKD':'MK',
+  'LUX':'LU',
+  // UK nations — banderas de subdivisión (no generables por ISO simple)
+  'ENG':'_ENG','SCO':'_SCT','WAL':'_WLS','NIR':'GB',
+  // CAF
+  'MAR':'MA','SEN':'SN','NGA':'NG','EGY':'EG','ALG':'DZ',
+  'TUN':'TN','CMR':'CM','GHA':'GH','CIV':'CI','RSA':'ZA',
+  'MLI':'ML','CPV':'CV','COD':'CD','ZAM':'ZM','ZIM':'ZW',
+  'TAN':'TZ','UGA':'UG','KEN':'KE','ETH':'ET','LBA':'LY',
+  'BEN':'BJ','BFA':'BF','ANG':'AO','GUI':'GN','RWA':'RW',
+  'MOZ':'MZ','SLE':'SL','GAM':'GM','LBR':'LR','SUD':'SD',
+  // AFC
+  'JPN':'JP','KOR':'KR','IRN':'IR','KSA':'SA','AUS':'AU',
+  'IRQ':'IQ','UZB':'UZ','JOR':'JO','IDN':'ID','QAT':'QA',
+  'CHN':'CN','OMA':'OM','BHR':'BH','KUW':'KW','UAE':'AE',
+  'SYR':'SY','PAL':'PS','LBN':'LB','KGZ':'KG','TJK':'TJ',
+  'MYA':'MM','PHI':'PH','THA':'TH','VIE':'VN',
+  // OFC
+  'NZL':'NZ',
+};
+
+// Banderas de subdivisiones del Reino Unido (emoji secuencias especiales)
+const _UK_FLAGS = { '_ENG':'🏴󠁧󠁢󠁥󠁮󠁧󠁿', '_SCT':'🏴󠁧󠁢󠁳󠁣󠁴󠁿', '_WLS':'🏴󠁧󠁢󠁷󠁬󠁳󠁿' };
+
+// Convierte código ISO2 al emoji de bandera
+function _iso2ToEmoji(iso2) {
+  if (_UK_FLAGS[iso2]) return _UK_FLAGS[iso2];
+  return [...iso2.toUpperCase()].map(c =>
+    String.fromCodePoint(c.codePointAt(0) + 127397)
+  ).join('');
+}
+
 // ── Utilidades globales ────────────────────────────────────────────────────
-function getFlag(name) {
-  return FLAGS[name] || '🏳';
+
+// Busca bandera primero en FLAGS (nombre), luego en TLA_TO_ISO
+function getFlag(nameOrTla) {
+  if (FLAGS[nameOrTla]) return FLAGS[nameOrTla];
+  const iso = TLA_TO_ISO[nameOrTla];
+  return iso ? _iso2ToEmoji(iso) : '🏳';
+}
+
+// Obtiene bandera desde el objeto equipo completo (usa TLA como prioridad)
+function getFlagFromTeam(team) {
+  if (!team) return '🏳';
+  if (team.tla && TLA_TO_ISO[team.tla]) return _iso2ToEmoji(TLA_TO_ISO[team.tla]);
+  return getFlag(team.name || team.shortName || '');
 }
 
 function getDisplayName(name) {

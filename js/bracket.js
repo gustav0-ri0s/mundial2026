@@ -4,8 +4,8 @@ function renderMatchCard(match) {
   const a = (match.awayTeam && (match.awayTeam.name || match.awayTeam.shortName || match.awayTeam.tla)) || 'Por definir';
   const hDisplay = getDisplayName(h);
   const aDisplay = getDisplayName(a);
-  const hf = getFlag(h);
-  const af = getFlag(a);
+  const hf = getFlagFromTeam(match.homeTeam) || getFlag(h);
+  const af = getFlagFromTeam(match.awayTeam) || getFlag(a);
   const isTBD    = h === 'Por definir' || a === 'Por definir';
   const finished = match.status === 'FINISHED';
   const inPlay   = match.status === 'IN_PLAY' || match.status === 'PAUSED';
