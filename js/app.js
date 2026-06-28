@@ -158,15 +158,15 @@ function openModal(matchId) {
   State.currentModalMatch  = match;
   State.selectedTeamIndex  = null;
 
-  const h    = match.homeTeam.name;
-  const a    = match.awayTeam.name;
+  const h    = getTeamName(match.homeTeam);
+  const a    = getTeamName(match.awayTeam);
   const date = new Date(match.utcDate);
 
   document.getElementById('modal-match-info').textContent =
     `${date.toLocaleDateString('es-PE', { weekday: 'long', day: '2-digit', month: 'long' })} — ¿Quién ganará?`;
-  document.getElementById('modal-flag1').textContent = getFlagFromTeam(match.homeTeam) || getFlag(h);
+  document.getElementById('modal-flag1').innerHTML = getFlagHTML(match.homeTeam, '40x30');
   document.getElementById('modal-name1').textContent = getDisplayName(h);
-  document.getElementById('modal-flag2').textContent = getFlagFromTeam(match.awayTeam) || getFlag(a);
+  document.getElementById('modal-flag2').innerHTML = getFlagHTML(match.awayTeam, '40x30');
   document.getElementById('modal-name2').textContent = getDisplayName(a);
 
   document.getElementById('modal-team1').classList.remove('selected');
@@ -175,8 +175,8 @@ function openModal(matchId) {
 
   const existing = State.userPredictions[matchId];
   const existEl  = document.getElementById('modal-existing-pred');
-  existEl.textContent = existing
-    ? `Tu predicción actual: ${getFlag(existing)} ${existing}`
+  existEl.innerHTML = existing
+    ? `Tu predicción actual: ${getFlagHTMLByName(existing)} ${getDisplayName(existing)}`
     : '';
 
   if      (existing === h) selectTeam(0);
@@ -206,8 +206,8 @@ async function onModalSave() {
   btn.textContent = 'Guardando...';
 
   const teamName = State.selectedTeamIndex === 0
-    ? State.currentModalMatch.homeTeam.name
-    : State.currentModalMatch.awayTeam.name;
+    ? getTeamName(State.currentModalMatch.homeTeam)
+    : getTeamName(State.currentModalMatch.awayTeam);
 
   try {
     await savePrediction(State.currentUser, State.currentModalMatch.id, teamName);

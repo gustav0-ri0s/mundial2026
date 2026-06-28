@@ -74,14 +74,14 @@ function clearMatchesCache() {
 // ── Datos de demostración ──────────────────────────────────────────────────
 function getDemoMatches() {
   const bracket = [
-    { home: 'Argentina',     away: 'France',      winner: 'HOME_TEAM', hs: 2, as: 1 },
-    { home: 'Brazil',        away: 'Germany',     winner: 'AWAY_TEAM', hs: 0, as: 1 },
-    { home: 'Spain',         away: 'England',     winner: 'HOME_TEAM', hs: 3, as: 1 },
-    { home: 'Portugal',      away: 'Netherlands', winner: 'AWAY_TEAM', hs: 1, as: 2 },
-    { home: 'Morocco',       away: 'Senegal',     winner: null },
-    { home: 'Japan',         away: 'South Korea', winner: null },
-    { home: 'United States', away: 'Mexico',      winner: null },
-    { home: 'Croatia',       away: 'Switzerland', winner: null }
+    { home: 'Argentina',     hTla: 'ARG', away: 'France',      aTla: 'FRA', winner: 'HOME_TEAM', hs: 2, as: 1 },
+    { home: 'Brazil',        hTla: 'BRA', away: 'Germany',     aTla: 'GER', winner: 'AWAY_TEAM', hs: 0, as: 1 },
+    { home: 'Spain',         hTla: 'ESP', away: 'England',     aTla: 'ENG', winner: 'HOME_TEAM', hs: 3, as: 1 },
+    { home: 'Portugal',      hTla: 'POR', away: 'Netherlands', aTla: 'NED', winner: 'AWAY_TEAM', hs: 1, as: 2 },
+    { home: 'Morocco',       hTla: 'MAR', away: 'Senegal',     aTla: 'SEN', winner: null },
+    { home: 'Japan',         hTla: 'JPN', away: 'Korea Republic', aTla: 'KOR', winner: null },
+    { home: 'United States', hTla: 'USA', away: 'Mexico',      aTla: 'MEX', winner: null },
+    { home: 'Croatia',       hTla: 'CRO', away: 'Switzerland', aTla: 'SUI', winner: null }
   ];
 
   return bracket.map((b, i) => ({
@@ -89,8 +89,8 @@ function getDemoMatches() {
     utcDate: new Date(Date.UTC(2026, 6, 2 + i * 2, 20, 0, 0)).toISOString(),
     stage: 'LAST_16',
     status: b.winner ? 'FINISHED' : 'TIMED',
-    homeTeam: { name: b.home },
-    awayTeam: { name: b.away },
+    homeTeam: { name: b.home, tla: b.hTla },
+    awayTeam: { name: b.away, tla: b.aTla },
     score: {
       winner: b.winner || null,
       fullTime: { home: b.hs ?? null, away: b.as ?? null }

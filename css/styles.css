@@ -266,11 +266,23 @@ main { padding: 24px 20px; max-width: 1600px; margin: 0 auto; }
 .team-row:hover { background: rgba(255,255,255,0.04); }
 .team-row.winner { background: rgba(245,197,24,0.07); }
 
-.flag {
-  font-size: 1.7rem;
+.flag { flex-shrink: 0; display: flex; align-items: center; }
+.team-flag-img {
+  width: 28px;
+  height: 21px;
+  border-radius: 2px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+  object-fit: cover;
   flex-shrink: 0;
-  line-height: 1;
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4));
+  display: block;
+}
+.flag-no { font-size: 1.2rem; }
+/* Bandera grande en el modal */
+.vt-flag .team-flag-img {
+  width: 52px;
+  height: 39px;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
 }
 .team-name {
   flex: 1;

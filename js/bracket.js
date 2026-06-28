@@ -1,11 +1,11 @@
 // ── Render de tarjeta de partido ───────────────────────────────────────────
 function renderMatchCard(match) {
-  const h = (match.homeTeam && (match.homeTeam.name || match.homeTeam.shortName || match.homeTeam.tla)) || 'Por definir';
-  const a = (match.awayTeam && (match.awayTeam.name || match.awayTeam.shortName || match.awayTeam.tla)) || 'Por definir';
+  const h = getTeamName(match.homeTeam);
+  const a = getTeamName(match.awayTeam);
   const hDisplay = getDisplayName(h);
   const aDisplay = getDisplayName(a);
-  const hf = getFlagFromTeam(match.homeTeam) || getFlag(h);
-  const af = getFlagFromTeam(match.awayTeam) || getFlag(a);
+  const hf = getFlagHTML(match.homeTeam);
+  const af = getFlagHTML(match.awayTeam);
   const isTBD    = h === 'Por definir' || a === 'Por definir';
   const finished = match.status === 'FINISHED';
   const inPlay   = match.status === 'IN_PLAY' || match.status === 'PAUSED';
@@ -40,12 +40,13 @@ function renderMatchCard(match) {
 
   let badgeHTML = '';
   if (!isTBD) {
+    const predFlag = getFlagHTMLByName(pred);
     if (predStatus === 'correct') {
-      badgeHTML = `<div class="pred-badge correct">✓ ¡Acertaste! Ganó ${getFlag(pred)} ${getDisplayName(pred)}</div>`;
+      badgeHTML = `<div class="pred-badge correct">✓ ¡Acertaste! ${predFlag} ${getDisplayName(pred)}</div>`;
     } else if (predStatus === 'wrong') {
-      badgeHTML = `<div class="pred-badge wrong">✗ Dijiste ${getFlag(pred)} ${getDisplayName(pred)}</div>`;
+      badgeHTML = `<div class="pred-badge wrong">✗ Dijiste ${predFlag} ${getDisplayName(pred)}</div>`;
     } else if (pred) {
-      badgeHTML = `<div class="pred-badge pending">⏳ ${getFlag(pred)} ${getDisplayName(pred)}</div>`;
+      badgeHTML = `<div class="pred-badge pending">⏳ ${predFlag} ${getDisplayName(pred)}</div>`;
     } else if (!finished && State.currentUser) {
       badgeHTML = `<div class="pred-badge open">toca para predecir</div>`;
     }

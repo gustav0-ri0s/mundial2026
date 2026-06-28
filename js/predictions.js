@@ -49,21 +49,19 @@ async function renderMyPredictions() {
     }
 
     const hTeam = match.homeTeam, aTeam = match.awayTeam;
-    const h     = hTeam && hTeam.name || '?';
-    const a     = aTeam && aTeam.name || '?';
-    const hf    = getFlagFromTeam(hTeam);
-    const af    = getFlagFromTeam(aTeam);
+    const h     = getTeamName(hTeam);
+    const a     = getTeamName(aTeam);
+    const hf    = getFlagHTML(hTeam);
+    const af    = getFlagHTML(aTeam);
 
-    // Bandera de la predicción: buscar el objeto equipo para usar TLA
     const predTeam = (hTeam && hTeam.name === pred.predicted_winner) ? hTeam
                    : (aTeam && aTeam.name === pred.predicted_winner) ? aTeam
                    : null;
-    const predFlag = predTeam ? getFlagFromTeam(predTeam) : getFlag(pred.predicted_winner);
+    const predFlag = predTeam ? getFlagHTML(predTeam) : getFlagHTMLByName(pred.predicted_winner);
 
-    // Bandera del resultado real
     const realTeam = result && ((hTeam && hTeam.name === result) ? hTeam
                    : (aTeam && aTeam.name === result) ? aTeam : null);
-    const realFlag = realTeam ? getFlagFromTeam(realTeam) : getFlag(result || '');
+    const realFlag = realTeam ? getFlagHTML(realTeam) : getFlagHTMLByName(result || '');
     const real = result ? `${realFlag} ${getDisplayName(result)}` : '—';
 
     rows += `<tr>

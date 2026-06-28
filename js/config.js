@@ -140,31 +140,71 @@ const TLA_TO_ISO = {
   'NZL':'NZ',
 };
 
-// Banderas de subdivisiones del Reino Unido (emoji secuencias especiales)
-const _UK_FLAGS = { '_ENG':'🏴󠁧󠁢󠁥󠁮󠁧󠁿', '_SCT':'🏴󠁧󠁢󠁳󠁣󠁴󠁿', '_WLS':'🏴󠁧󠁢󠁷󠁬󠁳󠁿' };
+// TLA → código para flagcdn.com (UK nations usan gb-eng, gb-sct, gb-wls)
+const TLA_TO_FLAG_CODE = {};
+const _UK_CODE = { '_ENG':'gb-eng', '_SCT':'gb-sct', '_WLS':'gb-wls' };
+Object.keys(TLA_TO_ISO).forEach(tla => {
+  const iso = TLA_TO_ISO[tla];
+  TLA_TO_FLAG_CODE[tla] = _UK_CODE[iso] || iso.toLowerCase();
+});
 
-// Convierte código ISO2 al emoji de bandera
-function _iso2ToEmoji(iso2) {
-  if (_UK_FLAGS[iso2]) return _UK_FLAGS[iso2];
-  return [...iso2.toUpperCase()].map(c =>
-    String.fromCodePoint(c.codePointAt(0) + 127397)
-  ).join('');
+// Nombre completo por TLA (usado cuando la API devuelve name:null)
+const TLA_TO_NAME = {
+  'ARG':'Argentina','BRA':'Brazil','URU':'Uruguay','COL':'Colombia','ECU':'Ecuador',
+  'VEN':'Venezuela','CHI':'Chile','PAR':'Paraguay','BOL':'Bolivia','PER':'Peru',
+  'USA':'United States','MEX':'Mexico','CAN':'Canada','PAN':'Panama','CRC':'Costa Rica',
+  'HON':'Honduras','SLV':'El Salvador','JAM':'Jamaica','CUB':'Cuba','TRI':'Trinidad and Tobago',
+  'HAI':'Haiti','CUR':'Curaçao','GUA':'Guatemala','NCA':'Nicaragua',
+  'FRA':'France','GER':'Germany','ESP':'Spain','ENG':'England','POR':'Portugal',
+  'NED':'Netherlands','BEL':'Belgium','CRO':'Croatia','SUI':'Switzerland',
+  'POL':'Poland','DEN':'Denmark','SRB':'Serbia','AUT':'Austria','TUR':'Turkey',
+  'UKR':'Ukraine','ROU':'Romania','SVK':'Slovakia','SVN':'Slovenia','ALB':'Albania',
+  'GEO':'Georgia','HUN':'Hungary','CZE':'Czech Republic','NOR':'Norway','SWE':'Sweden',
+  'FIN':'Finland','IRL':'Ireland','ISL':'Iceland','GRE':'Greece','SCO':'Scotland',
+  'WAL':'Wales','BIH':'Bosnia and Herzegovina','MNE':'Montenegro','MKD':'North Macedonia',
+  'MAR':'Morocco','SEN':'Senegal','NGA':'Nigeria','EGY':'Egypt','ALG':'Algeria',
+  'TUN':'Tunisia','CMR':'Cameroon','GHA':'Ghana','CIV':"Côte d'Ivoire",'RSA':'South Africa',
+  'MLI':'Mali','CPV':'Cape Verde','COD':'DR Congo',
+  'JPN':'Japan','KOR':'Korea Republic','IRN':'Iran','KSA':'Saudi Arabia','AUS':'Australia',
+  'IRQ':'Iraq','UZB':'Uzbekistan','JOR':'Jordan','IDN':'Indonesia','QAT':'Qatar',
+  'CHN':'China','NZL':'New Zealand',
+};
+
+// ── Imágenes de bandera desde flagcdn.com (funciona en todos los navegadores) ──
+function _flagImg(code, alt, size) {
+  const s = size || '24x18';
+  return `<img src="https://flagcdn.com/${s}/${code}.png" `
+       + `srcset="https://flagcdn.com/${s.replace(/\d+x\d+/, w => w.split('x').map(n=>n*2).join('x'))}/${code}.png 2x" `
+       + `alt="${alt}" loading="lazy" class="team-flag-img">`;
 }
 
-// ── Utilidades globales ────────────────────────────────────────────────────
-
-// Busca bandera primero en FLAGS (nombre), luego en TLA_TO_ISO
-function getFlag(nameOrTla) {
-  if (FLAGS[nameOrTla]) return FLAGS[nameOrTla];
-  const iso = TLA_TO_ISO[nameOrTla];
-  return iso ? _iso2ToEmoji(iso) : '🏳';
+// Devuelve HTML <img> de bandera usando el objeto equipo completo
+function getFlagHTML(team, size) {
+  if (!team) return '<span class="flag-no">🏳</span>';
+  const code = TLA_TO_FLAG_CODE[team.tla];
+  const name = team.name || team.shortName || team.tla || '';
+  if (code) return _flagImg(code, name, size);
+  return '<span class="flag-no">🏳</span>';
 }
 
-// Obtiene bandera desde el objeto equipo completo (usa TLA como prioridad)
-function getFlagFromTeam(team) {
-  if (!team) return '🏳';
-  if (team.tla && TLA_TO_ISO[team.tla]) return _iso2ToEmoji(TLA_TO_ISO[team.tla]);
-  return getFlag(team.name || team.shortName || '');
+// Devuelve HTML <img> de bandera a partir del nombre o TLA del equipo
+function getFlagHTMLByName(nameOrTla) {
+  // Buscar por TLA directo
+  if (TLA_TO_FLAG_CODE[nameOrTla]) {
+    return _flagImg(TLA_TO_FLAG_CODE[nameOrTla], nameOrTla);
+  }
+  // Buscar por nombre en FLAGS (que tiene ISO codes guardados como emojis, así que buscamos en TLA_TO_NAME al revés)
+  const tla = Object.keys(TLA_TO_NAME).find(k => TLA_TO_NAME[k] === nameOrTla);
+  if (tla && TLA_TO_FLAG_CODE[tla]) return _flagImg(TLA_TO_FLAG_CODE[tla], nameOrTla);
+  return '<span class="flag-no">🏳</span>';
+}
+
+// Nombre para mostrar: usa TLA_TO_NAME si el name es un código TLA o está vacío
+function getTeamName(team) {
+  if (!team) return 'Por definir';
+  if (team.name && team.name.length > 3) return team.name; // nombre completo
+  if (team.tla && TLA_TO_NAME[team.tla]) return TLA_TO_NAME[team.tla]; // lookup por TLA
+  return team.name || team.shortName || team.tla || 'Por definir';
 }
 
 function getDisplayName(name) {
@@ -174,7 +214,7 @@ function getDisplayName(name) {
 function getMatchResult(match) {
   if (!match || match.status !== 'FINISHED') return null;
   const w = match.score && match.score.winner;
-  if (w === 'HOME_TEAM') return (match.homeTeam && match.homeTeam.name) || null;
-  if (w === 'AWAY_TEAM') return (match.awayTeam && match.awayTeam.name) || null;
-  return null; // empate no aplica en eliminatorias
+  if (w === 'HOME_TEAM') return getTeamName(match.homeTeam);
+  if (w === 'AWAY_TEAM') return getTeamName(match.awayTeam);
+  return null;
 }
