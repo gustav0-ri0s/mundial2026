@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mundial 2026 — Bracket &amp; Predictor</title>
+  <link rel="stylesheet" href="css/styles.css"/>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <span class="logo-trophy">🏆</span>
+    <div class="logo-text">
+      <div class="title">Mundial 2026</div>
+      <div class="sub">Bracket &amp; Predictor</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div id="user-panel">
+      <input type="text" id="username-input" placeholder="Tu nombre..." maxlength="20"/>
+      <button class="btn" onclick="setUser()">Entrar</button>
+    </div>
+    <div id="active-user" style="display:none">
+      <div class="avatar" id="user-avatar"></div>
+      <span class="uname" id="user-display"></span>
+      <button class="btn btn-ghost" style="padding:4px 8px;font-size:0.8rem" onclick="changeUser()">↩</button>
+    </div>
+  </div>
+</header>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active"  onclick="showTab('bracket', this)">🏅 Bracket</div>
+  <div class="tab"         onclick="showTab('mis-predicciones', this)">🎯 Mis Predicciones</div>
+  <div class="tab"         onclick="showTab('ranking', this)">🏆 Ranking</div>
+</div>
+
+<main>
+
+  <!-- TAB: BRACKET -->
+  <div id="tab-bracket" class="tab-content active">
+    <div id="bracket-loading" class="loading-msg" style="display:none">
+      <div class="spinner"></div>
+      <p style="margin-top:12px">Cargando datos del Mundial...</p>
+    </div>
+    <div id="bracket-container"></div>
+  </div>
+
+  <!-- TAB: MIS PREDICCIONES -->
+  <div id="tab-mis-predicciones" class="tab-content">
+    <div id="pred-login-msg" class="notice" style="display:none">
+      <strong>👤 Ingresa tu nombre</strong> en la parte superior para ver y guardar tus predicciones.
+    </div>
+    <div id="pred-content"></div>
+  </div>
+
+  <!-- TAB: RANKING -->
+  <div id="tab-ranking" class="tab-content">
+    <div id="ranking-content"></div>
+  </div>
+
+</main>
+
+<!-- MODAL DE PREDICCIÓN -->
+<div class="modal-overlay" id="pred-modal" onclick="if(event.target===this) closeModal()">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <h2>🎯 Tu Predicción</h2>
+    <p class="modal-info" id="modal-match-info">¿Quién ganará este partido?</p>
+    <div class="vs-row">
+      <div class="vs-team" id="modal-team1" onclick="selectTeam(0)">
+        <div class="vt-flag" id="modal-flag1">🏳</div>
+        <div class="vt-name" id="modal-name1">Equipo 1</div>
+      </div>
+      <div class="vs-sep">VS</div>
+      <div class="vs-team" id="modal-team2" onclick="selectTeam(1)">
+        <div class="vt-flag" id="modal-flag2">🏳</div>
+        <div class="vt-name" id="modal-name2">Equipo 2</div>
+      </div>
+    </div>
+    <p class="modal-info" id="modal-existing-pred" style="color:var(--blue)"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn" id="modal-save-btn" onclick="onModalSave()" disabled>Guardar predicción</button>
+    </div>
+  </div>
+</div>
+
+<!-- Supabase SDK (CDN) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+<!-- Módulos de la aplicación (orden de dependencia) -->
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/supabase.js"></script>
+<script src="js/bracket.js"></script>
+<script src="js/predictions.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>
