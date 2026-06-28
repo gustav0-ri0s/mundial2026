@@ -182,7 +182,7 @@ main { padding: 24px 20px; max-width: 1600px; margin: 0 auto; }
 .round-col {
   display: flex;
   flex-direction: column;
-  min-width: 180px;
+  min-width: 200px;
 }
 .round-header {
   text-align: center;
@@ -221,60 +221,70 @@ main { padding: 24px 20px; max-width: 1600px; margin: 0 auto; }
 .match-card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
-  transition: border-color 0.2s, transform 0.15s;
+  transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
   position: relative;
+  min-width: 190px;
 }
 .match-card:not(.tbd):not(.finished-match):hover {
-  border-color: rgba(245,197,24,0.4);
-  transform: translateY(-1px);
+  border-color: rgba(245,197,24,0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
   cursor: pointer;
 }
 .match-card.has-prediction { border-left: 3px solid var(--blue); }
 .match-card.correct        { border-left: 3px solid var(--green); }
 .match-card.wrong          { border-left: 3px solid var(--red); }
-.match-card.tbd            { opacity: 0.5; cursor: default; }
+.match-card.tbd            { opacity: 0.45; cursor: default; }
 
 .match-time {
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   color: var(--muted);
   font-family: 'JetBrains Mono', monospace;
-  padding: 4px 8px 2px;
+  padding: 5px 10px 3px;
   letter-spacing: 1px;
+  background: rgba(0,0,0,0.15);
 }
 
 .team-row {
   display: flex;
   align-items: center;
-  padding: 5px 8px;
-  gap: 6px;
+  padding: 8px 10px;
+  gap: 9px;
   transition: background 0.15s;
 }
-.team-row:hover { background: rgba(255,255,255,0.03); }
-.team-row.winner { background: rgba(245,197,24,0.06); }
+.team-row:hover { background: rgba(255,255,255,0.04); }
+.team-row.winner { background: rgba(245,197,24,0.07); }
 
-.flag { font-size: 1.1rem; flex-shrink: 0; }
+.flag {
+  font-size: 1.7rem;
+  flex-shrink: 0;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4));
+}
 .team-name {
   flex: 1;
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  letter-spacing: 0.5px;
 }
+.team-name.winner-name { color: var(--gold); }
 .team-score {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.9rem;
+  font-size: 1rem;
   font-weight: 700;
-  min-width: 16px;
+  min-width: 20px;
   text-align: right;
   color: var(--text);
 }
 .team-score.winner-score { color: var(--gold); }
 
-.divider { height: 1px; background: var(--border); margin: 0 8px; }
+.divider { height: 1px; background: var(--border); margin: 0; }
 
 .pred-badge {
   font-size: 0.6rem;

@@ -48,7 +48,22 @@ const FLAGS = {
   'Australia': '🇦🇺', 'Qatar': '🇶🇦', 'Indonesia': '🇮🇩',
   'Uzbekistan': '🇺🇿', 'Iraq': '🇮🇶', 'Jordan': '🇯🇴',
   'China PR': '🇨🇳', 'China': '🇨🇳', 'New Zealand': '🇳🇿',
-  'Thailand': '🇹🇭', 'Vietnam': '🇻🇳'
+  'Thailand': '🇹🇭', 'Vietnam': '🇻🇳', 'Oman': '🇴🇲',
+  'Bahrain': '🇧🇭', 'Kuwait': '🇰🇼', 'UAE': '🇦🇪',
+  'United Arab Emirates': '🇦🇪', 'Syria': '🇸🇾',
+  'Palestine': '🇵🇸', 'Lebanon': '🇱🇧', 'Kyrgyzstan': '🇰🇬',
+  'Tajikistan': '🇹🇯', 'Myanmar': '🇲🇲', 'Philippines': '🇵🇭',
+
+  // África adicional
+  'Zambia': '🇿🇲', 'Zimbabwe': '🇿🇼', 'Tanzania': '🇹🇿',
+  'Uganda': '🇺🇬', 'Kenya': '🇰🇪', 'Ethiopia': '🇪🇹',
+  'Libya': '🇱🇾', 'Sudan': '🇸🇩', 'Mozambique': '🇲🇿',
+  'Benin': '🇧🇯', 'Burkina Faso': '🇧🇫', 'Angola': '🇦🇴',
+  'Guinea': '🇬🇳', 'Rwanda': '🇷🇼',
+
+  // CONCACAF adicional
+  'Curaçao': '🇨🇼', 'Haiti': '🇭🇹', 'Guatemala': '🇬🇹',
+  'Nicaragua': '🇳🇮',
 };
 
 // ── Nombres de ronda ───────────────────────────────────────────────────────
@@ -63,9 +78,37 @@ const ROUND_NAMES = {
 
 const ROUND_ORDER = ['LAST_32', 'LAST_16', 'QUARTER_FINALS', 'SEMI_FINALS', 'FINAL'];
 
+// ── Nombres cortos para países con nombres largos ─────────────────────────
+const SHORT_NAMES = {
+  'United States':          'USA',
+  'Korea Republic':         'Corea',
+  'South Korea':            'Corea del Sur',
+  'Saudi Arabia':           'Arabia Saudita',
+  'Bosnia and Herzegovina': 'Bosnia',
+  'Trinidad and Tobago':    'Trinidad',
+  "Côte d'Ivoire":          'Costa de Marfil',
+  'Ivory Coast':            'Costa de Marfil',
+  'New Zealand':            'Nueva Zelanda',
+  'South Africa':           'Sudáfrica',
+  'North Macedonia':        'Macedonia del Norte',
+  'Congo DR':               'Congo RD',
+  'DR Congo':               'Congo RD',
+  'Cape Verde':             'Cabo Verde',
+  'El Salvador':            'El Salvador',
+  'Costa Rica':             'Costa Rica',
+  'Czech Republic':         'Chequia',
+  'Czechia':                'Chequia',
+  'IR Iran':                'Irán',
+  'China PR':               'China',
+};
+
 // ── Utilidades globales ────────────────────────────────────────────────────
 function getFlag(name) {
   return FLAGS[name] || '🏳';
+}
+
+function getDisplayName(name) {
+  return SHORT_NAMES[name] || name;
 }
 
 function getMatchResult(match) {

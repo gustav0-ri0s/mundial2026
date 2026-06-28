@@ -131,9 +131,9 @@ function openModal(matchId) {
   document.getElementById('modal-match-info').textContent =
     `${date.toLocaleDateString('es-PE', { weekday: 'long', day: '2-digit', month: 'long' })} — ¿Quién ganará?`;
   document.getElementById('modal-flag1').textContent = getFlag(h);
-  document.getElementById('modal-name1').textContent = h;
+  document.getElementById('modal-name1').textContent = getDisplayName(h);
   document.getElementById('modal-flag2').textContent = getFlag(a);
-  document.getElementById('modal-name2').textContent = a;
+  document.getElementById('modal-name2').textContent = getDisplayName(a);
 
   document.getElementById('modal-team1').classList.remove('selected');
   document.getElementById('modal-team2').classList.remove('selected');

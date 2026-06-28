@@ -2,6 +2,8 @@
 function renderMatchCard(match) {
   const h = (match.homeTeam && (match.homeTeam.name || match.homeTeam.shortName || match.homeTeam.tla)) || 'Por definir';
   const a = (match.awayTeam && (match.awayTeam.name || match.awayTeam.shortName || match.awayTeam.tla)) || 'Por definir';
+  const hDisplay = getDisplayName(h);
+  const aDisplay = getDisplayName(a);
   const hf = getFlag(h);
   const af = getFlag(a);
   const isTBD    = h === 'Por definir' || a === 'Por definir';
@@ -37,11 +39,11 @@ function renderMatchCard(match) {
   let badgeHTML = '';
   if (!isTBD) {
     if (predStatus === 'correct') {
-      badgeHTML = `<div class="pred-badge correct">✓ ¡Acertaste! Ganó ${getFlag(pred)} ${pred}</div>`;
+      badgeHTML = `<div class="pred-badge correct">✓ ¡Acertaste! Ganó ${getFlag(pred)} ${getDisplayName(pred)}</div>`;
     } else if (predStatus === 'wrong') {
-      badgeHTML = `<div class="pred-badge wrong">✗ Dijiste ${getFlag(pred)} ${pred}</div>`;
+      badgeHTML = `<div class="pred-badge wrong">✗ Dijiste ${getFlag(pred)} ${getDisplayName(pred)}</div>`;
     } else if (pred) {
-      badgeHTML = `<div class="pred-badge pending">⏳ ${getFlag(pred)} ${pred}</div>`;
+      badgeHTML = `<div class="pred-badge pending">⏳ ${getFlag(pred)} ${getDisplayName(pred)}</div>`;
     } else if (!finished && State.currentUser) {
       badgeHTML = `<div class="pred-badge open">toca para predecir</div>`;
     }
@@ -50,18 +52,21 @@ function renderMatchCard(match) {
   const clickable = !isTBD && !finished && State.currentUser;
   const clickAttr = clickable ? `onclick="openModal(${match.id})"` : '';
 
+  const hWinner = winner === 'HOME_TEAM';
+  const aWinner = winner === 'AWAY_TEAM';
+
   return `<div class="${cardClass}" ${clickAttr} data-match="${match.id}">
     <div class="match-time">${timeLabel}</div>
-    <div class="team-row${winner === 'HOME_TEAM' ? ' winner' : ''}">
+    <div class="team-row${hWinner ? ' winner' : ''}">
       <span class="flag">${hf}</span>
-      <span class="team-name">${h}</span>
-      <span class="team-score${winner === 'HOME_TEAM' ? ' winner-score' : ''}">${hs !== null && hs !== undefined ? hs : ''}</span>
+      <span class="team-name${hWinner ? ' winner-name' : ''}">${hDisplay}</span>
+      <span class="team-score${hWinner ? ' winner-score' : ''}">${hs !== null && hs !== undefined ? hs : ''}</span>
     </div>
     <div class="divider"></div>
-    <div class="team-row${winner === 'AWAY_TEAM' ? ' winner' : ''}">
+    <div class="team-row${aWinner ? ' winner' : ''}">
       <span class="flag">${af}</span>
-      <span class="team-name">${a}</span>
-      <span class="team-score${winner === 'AWAY_TEAM' ? ' winner-score' : ''}">${as_ !== null && as_ !== undefined ? as_ : ''}</span>
+      <span class="team-name${aWinner ? ' winner-name' : ''}">${aDisplay}</span>
+      <span class="team-score${aWinner ? ' winner-score' : ''}">${as_ !== null && as_ !== undefined ? as_ : ''}</span>
     </div>
     ${badgeHTML}
   </div>`;
