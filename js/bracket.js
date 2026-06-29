@@ -6,7 +6,8 @@ function renderMatchCard(match) {
   const aDisplay = getDisplayName(a);
   const hf = getFlagHTML(match.homeTeam);
   const af = getFlagHTML(match.awayTeam);
-  const isTBD    = h === 'Por definir' || a === 'Por definir';
+  const bothTBD = h === 'Por definir' && a === 'Por definir'; // ambos desconocidos
+  const isTBD   = h === 'Por definir' || a === 'Por definir'; // alguno desconocido (desactiva click)
   const finished = match.status === 'FINISHED';
   const inPlay   = match.status === 'IN_PLAY' || match.status === 'PAUSED';
   const winner   = match.score && match.score.winner;
@@ -22,21 +23,27 @@ function renderMatchCard(match) {
   }
 
   let cardClass = 'match-card';
-  if (isTBD)                    cardClass += ' tbd';
+  if (bothTBD)                  cardClass += ' tbd';      // ambos TBD → muy transparente
+  else if (isTBD)               cardClass += ' one-tbd';  // uno TBD → levemente transparente
   if (finished)                 cardClass += ' finished-match';
   if (predStatus === 'correct') cardClass += ' correct';
   else if (predStatus === 'wrong') cardClass += ' wrong';
   else if (pred)                cardClass += ' has-prediction';
 
-  const date    = new Date(match.utcDate);
-  const tz      = 'America/Lima'; // GMT-5, Perú — sin horario de verano
-  const dayStr  = date.toLocaleDateString('es-PE',  { day: '2-digit', month: 'short', timeZone: tz });
-  const timeStr = date.toLocaleTimeString('es-PE',  { hour: '2-digit', minute: '2-digit', timeZone: tz });
-  const dateStr = `${dayStr} · ${timeStr}`;
-
-  let timeLabel = dateStr;
+  let timeLabel = '';
+  if (match.utcDate) {
+    const date    = new Date(match.utcDate);
+    const tz      = 'America/Lima';
+    const dayStr  = date.toLocaleDateString('es-PE',  { day: '2-digit', month: 'short', timeZone: tz });
+    const timeStr = date.toLocaleTimeString('es-PE',  { hour: '2-digit', minute: '2-digit', timeZone: tz });
+    timeLabel = `${dayStr} · ${timeStr}`;
+  }
   if (finished) timeLabel = '⚽ FINALIZADO';
   else if (inPlay) timeLabel = '🔴 EN VIVO';
+
+  const venueHTML = match.venue
+    ? `<div class="match-venue">📍 ${match.venue}</div>`
+    : '';
 
   let badgeHTML = '';
   if (!isTBD) {
@@ -60,6 +67,7 @@ function renderMatchCard(match) {
 
   return `<div class="${cardClass}" ${clickAttr} data-match="${match.id}">
     <div class="match-time${inPlay ? ' live' : ''}">${timeLabel}</div>
+    ${venueHTML}
     <div class="team-row${hWinner ? ' winner' : ''}">
       <span class="flag">${hf}</span>
       <span class="team-name${hWinner ? ' winner-name' : ''}">${hDisplay}</span>

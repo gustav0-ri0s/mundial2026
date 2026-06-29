@@ -71,10 +71,36 @@ function clearMatchesCache() {
   _cacheTime = 0;
 }
 
+// Devuelve true si el objeto equipo tiene información visible útil
+function _teamHasInfo(t) {
+  return t && (t.name || t.tla);
+}
+
+// Rellena el slot de un partido con el ganador (preserva el id si ya existía)
+function _fillSlot(toMatch, slot, winner) {
+  const existing = toMatch[slot];
+  if (_teamHasInfo(existing)) return; // ya tiene datos reales → no sobreescribir
+  toMatch[slot] = existing ? { ...existing, ...winner } : { ...winner };
+}
+
+// Genera partidos sintéticos para la siguiente ronda cuando la API no los tiene aún
+function _makeSyntheticMatch(stage, idx, baseId) {
+  return {
+    id: baseId + idx,
+    utcDate: null,
+    stage,
+    status: 'SCHEDULED',
+    homeTeam: null,
+    awayTeam: null,
+    score: { winner: null, fullTime: { home: null, away: null } },
+    _synthetic: true
+  };
+}
+
 // Propaga ganadores de cada ronda a la siguiente.
-// La API deja los equipos en null hasta que el torneo los llena — lo hacemos nosotros.
-// Supone que los partidos dentro de una ronda están ordenados por id (orden del cuadro).
-// Ejemplo: LAST_32[0] y [1] → LAST_16[0] home/away; [2] y [3] → LAST_16[1] home/away; etc.
+// Maneja dos casos:
+//   A) La API ya tiene los partidos del siguiente stage con slots en null → los rellena.
+//   B) La API no tiene los partidos del siguiente stage aún → los genera sintéticamente.
 function propagateWinners(matches) {
   const stageOrder = ['LAST_32', 'LAST_16', 'QUARTER_FINALS', 'SEMI_FINALS', 'FINAL'];
 
@@ -83,45 +109,58 @@ function propagateWinners(matches) {
     const toStage   = stageOrder[si + 1];
 
     const from = matches.filter(m => m.stage === fromStage).sort((a, b) => a.id - b.id);
-    const to   = matches.filter(m => m.stage === toStage).sort((a, b) => a.id - b.id);
+    if (from.length === 0) continue;
 
-    if (from.length === 0 || to.length === 0) continue;
-
+    // Recoge solo ganadores conocidos de esta ronda
+    const winners = [];
     from.forEach((match, idx) => {
-      if (match.status !== 'FINISHED' || !match.score) return;
+      if (match.status !== 'FINISHED' || !match.score) { winners.push(null); return; }
+      const w = match.score.winner === 'HOME_TEAM' ? match.homeTeam
+              : match.score.winner === 'AWAY_TEAM' ? match.awayTeam
+              : null;
+      winners.push(w);
+    });
 
-      const winner = match.score.winner === 'HOME_TEAM' ? match.homeTeam
-                   : match.score.winner === 'AWAY_TEAM' ? match.awayTeam
-                   : null;
+    const anyWinner = winners.some(w => w !== null);
+    if (!anyWinner) continue;
+
+    let to = matches.filter(m => m.stage === toStage).sort((a, b) => a.id - b.id);
+
+    // Si la API no devolvió partidos del siguiente stage, los generamos
+    const needed = Math.ceil(from.length / 2);
+    if (to.length === 0) {
+      const synBase = 80000 + si * 1000;
+      for (let i = 0; i < needed; i++) {
+        const sm = _makeSyntheticMatch(toStage, i, synBase);
+        matches.push(sm);
+        to.push(sm);
+      }
+    }
+
+    winners.forEach((winner, idx) => {
       if (!winner) return;
-
       const toMatch = to[Math.floor(idx / 2)];
       if (!toMatch) return;
-
-      const slot     = idx % 2 === 0 ? 'homeTeam' : 'awayTeam';
-      const existing = toMatch[slot];
-      // Solo rellena si el slot está vacío o no tiene identificación útil
-      if (!existing || (!existing.name && !existing.tla && !existing.id)) {
-        toMatch[slot] = { ...winner };
-      }
+      _fillSlot(toMatch, idx % 2 === 0 ? 'homeTeam' : 'awayTeam', winner);
     });
   }
 
-  // Perdedores de semifinales → 3er lugar
+  // Perdedores de semifinales → partido por 3er lugar
   const semis  = matches.filter(m => m.stage === 'SEMI_FINALS').sort((a, b) => a.id - b.id);
   const thirds = matches.filter(m => m.stage === 'THIRD_PLACE').sort((a, b) => a.id - b.id);
-  if (semis.length >= 2 && thirds.length >= 1) {
+  if (semis.length >= 2) {
+    let third = thirds[0];
+    if (!third) {
+      third = _makeSyntheticMatch('THIRD_PLACE', 0, 89000);
+      matches.push(third);
+    }
     semis.forEach((match, idx) => {
       if (match.status !== 'FINISHED' || !match.score) return;
       const loser = match.score.winner === 'HOME_TEAM' ? match.awayTeam
                   : match.score.winner === 'AWAY_TEAM' ? match.homeTeam
                   : null;
       if (!loser) return;
-      const slot     = idx === 0 ? 'homeTeam' : 'awayTeam';
-      const existing = thirds[0][slot];
-      if (!existing || (!existing.name && !existing.tla && !existing.id)) {
-        thirds[0][slot] = { ...loser };
-      }
+      _fillSlot(third, idx === 0 ? 'homeTeam' : 'awayTeam', loser);
     });
   }
 
