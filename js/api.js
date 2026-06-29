@@ -35,7 +35,7 @@ async function _fetchViaProxy() {
   }
 
   const data = await res.json();
-  _matchesCache = data.matches || [];
+  _matchesCache = propagateWinners(data.matches || []);
   _cacheTime = Date.now();
   return _matchesCache;
 }
@@ -61,7 +61,7 @@ async function _fetchDirect() {
     }
   }
 
-  _matchesCache = matches;
+  _matchesCache = propagateWinners(matches);
   _cacheTime = Date.now();
   return _matchesCache;
 }
@@ -71,9 +71,67 @@ function clearMatchesCache() {
   _cacheTime = 0;
 }
 
+// Propaga ganadores de cada ronda a la siguiente.
+// La API deja los equipos en null hasta que el torneo los llena — lo hacemos nosotros.
+// Supone que los partidos dentro de una ronda están ordenados por id (orden del cuadro).
+// Ejemplo: LAST_32[0] y [1] → LAST_16[0] home/away; [2] y [3] → LAST_16[1] home/away; etc.
+function propagateWinners(matches) {
+  const stageOrder = ['LAST_32', 'LAST_16', 'QUARTER_FINALS', 'SEMI_FINALS', 'FINAL'];
+
+  for (let si = 0; si < stageOrder.length - 1; si++) {
+    const fromStage = stageOrder[si];
+    const toStage   = stageOrder[si + 1];
+
+    const from = matches.filter(m => m.stage === fromStage).sort((a, b) => a.id - b.id);
+    const to   = matches.filter(m => m.stage === toStage).sort((a, b) => a.id - b.id);
+
+    if (from.length === 0 || to.length === 0) continue;
+
+    from.forEach((match, idx) => {
+      if (match.status !== 'FINISHED' || !match.score) return;
+
+      const winner = match.score.winner === 'HOME_TEAM' ? match.homeTeam
+                   : match.score.winner === 'AWAY_TEAM' ? match.awayTeam
+                   : null;
+      if (!winner) return;
+
+      const toMatch = to[Math.floor(idx / 2)];
+      if (!toMatch) return;
+
+      const slot     = idx % 2 === 0 ? 'homeTeam' : 'awayTeam';
+      const existing = toMatch[slot];
+      // Solo rellena si el slot está vacío o no tiene identificación útil
+      if (!existing || (!existing.name && !existing.tla && !existing.id)) {
+        toMatch[slot] = { ...winner };
+      }
+    });
+  }
+
+  // Perdedores de semifinales → 3er lugar
+  const semis  = matches.filter(m => m.stage === 'SEMI_FINALS').sort((a, b) => a.id - b.id);
+  const thirds = matches.filter(m => m.stage === 'THIRD_PLACE').sort((a, b) => a.id - b.id);
+  if (semis.length >= 2 && thirds.length >= 1) {
+    semis.forEach((match, idx) => {
+      if (match.status !== 'FINISHED' || !match.score) return;
+      const loser = match.score.winner === 'HOME_TEAM' ? match.awayTeam
+                  : match.score.winner === 'AWAY_TEAM' ? match.homeTeam
+                  : null;
+      if (!loser) return;
+      const slot     = idx === 0 ? 'homeTeam' : 'awayTeam';
+      const existing = thirds[0][slot];
+      if (!existing || (!existing.name && !existing.tla && !existing.id)) {
+        thirds[0][slot] = { ...loser };
+      }
+    });
+  }
+
+  return matches;
+}
+
 // ── Datos de demostración ──────────────────────────────────────────────────
 function getDemoMatches() {
-  const bracket = [
+  // Ronda de 32 — 4 terminados, 4 pendientes
+  const last32 = [
     { home: 'Argentina',     hTla: 'ARG', away: 'France',      aTla: 'FRA', winner: 'HOME_TEAM', hs: 2, as: 1 },
     { home: 'Brazil',        hTla: 'BRA', away: 'Germany',     aTla: 'GER', winner: 'AWAY_TEAM', hs: 0, as: 1 },
     { home: 'Spain',         hTla: 'ESP', away: 'England',     aTla: 'ENG', winner: 'HOME_TEAM', hs: 3, as: 1 },
@@ -84,16 +142,30 @@ function getDemoMatches() {
     { home: 'Croatia',       hTla: 'CRO', away: 'Switzerland', aTla: 'SUI', winner: null }
   ];
 
-  return bracket.map((b, i) => ({
+  // Octavos — equipos vacíos (la API los deja null; propagateWinners los rellena)
+  const last16 = [
+    { id: 9100 }, { id: 9101 }, { id: 9102 }, { id: 9103 }
+  ];
+
+  const r32 = last32.map((b, i) => ({
     id: 9000 + i,
-    utcDate: new Date(Date.UTC(2026, 6, 2 + i * 2, 20, 0, 0)).toISOString(),
-    stage: 'LAST_16',
+    utcDate: new Date(Date.UTC(2026, 6, 2 + i, 20, 0, 0)).toISOString(),
+    stage: 'LAST_32',
     status: b.winner ? 'FINISHED' : 'TIMED',
     homeTeam: { name: b.home, tla: b.hTla },
     awayTeam: { name: b.away, tla: b.aTla },
-    score: {
-      winner: b.winner || null,
-      fullTime: { home: b.hs ?? null, away: b.as ?? null }
-    }
+    score: { winner: b.winner || null, fullTime: { home: b.hs ?? null, away: b.as ?? null } }
   }));
+
+  const r16 = last16.map((b, i) => ({
+    id: b.id,
+    utcDate: new Date(Date.UTC(2026, 6, 14 + i, 20, 0, 0)).toISOString(),
+    stage: 'LAST_16',
+    status: 'TIMED',
+    homeTeam: null,
+    awayTeam: null,
+    score: { winner: null, fullTime: { home: null, away: null } }
+  }));
+
+  return propagateWinners([...r32, ...r16]);
 }
