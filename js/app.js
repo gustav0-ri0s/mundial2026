@@ -106,10 +106,14 @@ function scheduleAutoRefresh() {
 }
 
 async function _liveRefreshTick() {
+  // Refrescar también cuando hay partidos recién terminados sin ganador propagado
   const hasLive = State.matchesData.some(
     m => m.status === 'IN_PLAY' || m.status === 'PAUSED'
   );
-  if (!hasLive) return;
+  const hasPendingPropagation = State.matchesData.some(
+    m => m.status === 'FINISHED' && m.score && m.score.winner
+  );
+  if (!hasLive && !hasPendingPropagation) return;
 
   clearMatchesCache();
   try {

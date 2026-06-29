@@ -158,9 +158,11 @@ function renderBracket() {
       <div class="score-card sc-red"><div class="sc-num">${finished.length - correct.length}</div><div class="sc-label">Incorrectas</div></div>
     </div>` : '';
 
-  // Agrupar partidos por ronda
+  // Agrupar y ordenar por id — orden del cuadro oficial (coincide con propagateWinners)
   const rounds = {};
-  ROUND_ORDER.forEach(r => { rounds[r] = matches.filter(m => m.stage === r); });
+  ROUND_ORDER.forEach(r => {
+    rounds[r] = matches.filter(m => m.stage === r).sort((a, b) => a.id - b.id);
+  });
 
   const storageLabel = isSupabaseConfigured()
     ? '<span class="storage-badge cloud" title="Predicciones sincronizadas en la nube">☁ Supabase</span>'
