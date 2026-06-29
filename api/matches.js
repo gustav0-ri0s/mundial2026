@@ -1,43 +1,47 @@
 // Vercel serverless function — proxy para football-data.org
-// Evita CORS y normaliza los nombres de equipo para WC 2026 (48 equipos).
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
+  // Sin cache: los datos del torneo cambian minuto a minuto
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
 
   const API_KEY = 'fd01075a76f44d0d954557f521a3f9cd';
   const BASE    = 'https://api.football-data.org/v4';
-  // WC 2026 tiene ronda nueva: LAST_32 (antes del LAST_16)
-  const STAGES  = ['LAST_32', 'LAST_16', 'QUARTER_FINALS', 'SEMI_FINALS', 'THIRD_PLACE', 'FINAL'];
+  const STAGES  = ['LAST_32','LAST_16','QUARTER_FINALS','SEMI_FINALS','THIRD_PLACE','FINAL'];
   const headers = { 'X-Auth-Token': API_KEY };
 
   try {
-    let r = await fetch(`${BASE}/competitions/WC/matches?season=2026`, { headers });
+    // Petición principal: todos los partidos de fase eliminatoria del WC 2026
+    const r = await fetch(`${BASE}/competitions/WC/matches?season=2026`, { headers });
 
-    if (!r.ok && r.status !== 404) {
+    if (!r.ok) {
       return res.status(r.status).json({ error: `API error ${r.status}` });
     }
 
-    let matches = [];
+    const data  = await r.json();
+    let matches = (data.matches || []).filter(m => STAGES.includes(m.stage));
 
-    if (r.ok) {
-      const data = await r.json();
-      matches = (data.matches || []).filter(m => STAGES.includes(m.stage));
-    }
-
-    // Fallback: pedir LAST_32 directamente si no se encontraron partidos knockout
+    // Si la API no devolvió ningún partido de knockout, intentar cada stage por separado
     if (matches.length === 0) {
-      r = await fetch(`${BASE}/competitions/WC/matches?stage=LAST_32`, { headers });
-      if (r.ok) {
-        const d2 = await r.json();
-        matches = d2.matches || [];
+      const all = [];
+      for (const stage of STAGES) {
+        const r2 = await fetch(`${BASE}/competitions/WC/matches?stage=${stage}`, { headers });
+        if (r2.ok) {
+          const d2 = await r2.json();
+          all.push(...(d2.matches || []));
+        }
       }
+      matches = all;
     }
 
-    // Normalizar nombres de equipo: usar shortName o tla si name es null/vacío
+    // Normalizar: rellenar nombres nulos desde TLA o shortName
     matches = matches.map(m => ({
       ...m,
       homeTeam: normalizeTeam(m.homeTeam),
-      awayTeam: normalizeTeam(m.awayTeam)
+      awayTeam: normalizeTeam(m.awayTeam),
     }));
+
+    // Propagar ganadores en el servidor también, como segunda capa de seguridad
+    matches = propagateByTeamId(matches);
 
     return res.status(200).json({ matches });
 
@@ -45,6 +49,8 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: e.message });
   }
 }
+
+// ── Helpers ────────────────────────────────────────────────────────────────
 
 const TLA_NAMES = {
   'ARG':'Argentina','BRA':'Brazil','URU':'Uruguay','COL':'Colombia','ECU':'Ecuador',
@@ -74,4 +80,31 @@ function normalizeTeam(team) {
     ? team.name
     : (team.tla && TLA_NAMES[team.tla]) || team.name || team.shortName || team.tla || null;
   return { ...team, name };
+}
+
+// Estrategia principal de propagación: si un slot tiene id pero sin nombre,
+// busca ese id entre los equipos conocidos de otras partidos y rellena.
+// Esto es lo que pasa cuando la API asigna al ganador a la siguiente ronda
+// pero aún no rellena el nombre completo (devuelve { id: X, name: null }).
+function propagateByTeamId(matches) {
+  // 1. Construir mapa teamId → equipo completo
+  const byId = {};
+  matches.forEach(m => {
+    [m.homeTeam, m.awayTeam].forEach(t => {
+      if (t && t.id && (t.name || t.tla)) byId[t.id] = t;
+    });
+  });
+
+  // 2. Rellenar slots con id pero sin nombre
+  matches.forEach(m => {
+    ['homeTeam', 'awayTeam'].forEach(slot => {
+      const t = m[slot];
+      if (t && t.id && !t.name && !t.tla && byId[t.id]) {
+        m[slot] = { ...t, name: byId[t.id].name, tla: byId[t.id].tla,
+                    shortName: byId[t.id].shortName, crest: byId[t.id].crest };
+      }
+    });
+  });
+
+  return matches;
 }

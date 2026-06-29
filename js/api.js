@@ -71,96 +71,101 @@ function clearMatchesCache() {
   _cacheTime = 0;
 }
 
-// Devuelve true si el objeto equipo tiene información visible útil
-function _teamHasInfo(t) {
-  return t && (t.name || t.tla);
-}
+function _teamHasInfo(t) { return t && (t.name || t.tla); }
 
-// Rellena el slot de un partido con el ganador (preserva el id si ya existía)
-function _fillSlot(toMatch, slot, winner) {
-  const existing = toMatch[slot];
-  if (_teamHasInfo(existing)) return; // ya tiene datos reales → no sobreescribir
-  toMatch[slot] = existing ? { ...existing, ...winner } : { ...winner };
-}
-
-// Genera partidos sintéticos para la siguiente ronda cuando la API no los tiene aún
 function _makeSyntheticMatch(stage, idx, baseId) {
   return {
-    id: baseId + idx,
-    utcDate: null,
-    stage,
-    status: 'SCHEDULED',
-    homeTeam: null,
-    awayTeam: null,
+    id: baseId + idx, utcDate: null, stage,
+    status: 'SCHEDULED', homeTeam: null, awayTeam: null,
     score: { winner: null, fullTime: { home: null, away: null } },
     _synthetic: true
   };
 }
 
-// Propaga ganadores de cada ronda a la siguiente.
-// Maneja dos casos:
-//   A) La API ya tiene los partidos del siguiente stage con slots en null → los rellena.
-//   B) La API no tiene los partidos del siguiente stage aún → los genera sintéticamente.
+// ── Propagación de ganadores ──────────────────────────────────────────────
+// Estrategia en 2 pasos:
+//
+// PASO 1 — ID matching (método principal, confiable):
+//   La API frecuentemente devuelve el slot del ganador en la siguiente ronda
+//   como { id: X, name: null, tla: null }. Construimos un mapa teamId→datos
+//   completos y rellenamos esos slots vacíos. Esto es 100% correcto porque
+//   la API ya asignó el equipo correcto; solo le falta el nombre/tla.
+//
+// PASO 2 — Posición por índice (fallback):
+//   Cuando la API no asigna el equipo en absoluto (slot null/undefined),
+//   usamos la posición ordenada por id para inferir la llave. Menos confiable
+//   pero cubre el caso donde la API aún no actualizó.
 function propagateWinners(matches) {
-  const stageOrder = ['LAST_32', 'LAST_16', 'QUARTER_FINALS', 'SEMI_FINALS', 'FINAL'];
+
+  // ── PASO 1: rellena slots con id pero sin nombre ──────────────────────
+  const teamById = {};
+  matches.forEach(m => {
+    [m.homeTeam, m.awayTeam].forEach(t => {
+      if (t && t.id && (t.name || t.tla)) teamById[t.id] = t;
+    });
+  });
+
+  matches.forEach(m => {
+    ['homeTeam', 'awayTeam'].forEach(slot => {
+      const t = m[slot];
+      if (t && t.id && !t.name && !t.tla && teamById[t.id]) {
+        const known = teamById[t.id];
+        m[slot] = { ...t, name: known.name, tla: known.tla,
+                    shortName: known.shortName, crest: known.crest };
+      }
+    });
+  });
+
+  // ── PASO 2: rellena slots completamente vacíos por posición ──────────
+  const stageOrder = ['LAST_32','LAST_16','QUARTER_FINALS','SEMI_FINALS','FINAL'];
 
   for (let si = 0; si < stageOrder.length - 1; si++) {
     const fromStage = stageOrder[si];
     const toStage   = stageOrder[si + 1];
 
     const from = matches.filter(m => m.stage === fromStage).sort((a, b) => a.id - b.id);
-    if (from.length === 0) continue;
-
-    // Recoge solo ganadores conocidos de esta ronda
-    const winners = [];
-    from.forEach((match, idx) => {
-      if (match.status !== 'FINISHED' || !match.score) { winners.push(null); return; }
-      const w = match.score.winner === 'HOME_TEAM' ? match.homeTeam
-              : match.score.winner === 'AWAY_TEAM' ? match.awayTeam
-              : null;
-      winners.push(w);
-    });
-
-    const anyWinner = winners.some(w => w !== null);
-    if (!anyWinner) continue;
+    if (!from.some(m => m.status === 'FINISHED')) continue;
 
     let to = matches.filter(m => m.stage === toStage).sort((a, b) => a.id - b.id);
 
-    // Si la API no devolvió partidos del siguiente stage, los generamos
-    const needed = Math.ceil(from.length / 2);
     if (to.length === 0) {
-      const synBase = 80000 + si * 1000;
+      const needed = Math.ceil(from.length / 2);
       for (let i = 0; i < needed; i++) {
-        const sm = _makeSyntheticMatch(toStage, i, synBase);
+        const sm = _makeSyntheticMatch(toStage, i, 80000 + si * 1000);
         matches.push(sm);
         to.push(sm);
       }
     }
 
-    winners.forEach((winner, idx) => {
+    from.forEach((match, idx) => {
+      if (match.status !== 'FINISHED' || !match.score) return;
+      const winner = match.score.winner === 'HOME_TEAM' ? match.homeTeam
+                   : match.score.winner === 'AWAY_TEAM' ? match.awayTeam : null;
       if (!winner) return;
+
       const toMatch = to[Math.floor(idx / 2)];
       if (!toMatch) return;
-      _fillSlot(toMatch, idx % 2 === 0 ? 'homeTeam' : 'awayTeam', winner);
+      const slot = idx % 2 === 0 ? 'homeTeam' : 'awayTeam';
+      if (!_teamHasInfo(toMatch[slot])) {
+        const ex = toMatch[slot];
+        toMatch[slot] = ex ? { ...ex, ...winner } : { ...winner };
+      }
     });
   }
 
-  // Perdedores de semifinales → partido por 3er lugar
+  // Perdedores de semis → 3er lugar
   const semis  = matches.filter(m => m.stage === 'SEMI_FINALS').sort((a, b) => a.id - b.id);
-  const thirds = matches.filter(m => m.stage === 'THIRD_PLACE').sort((a, b) => a.id - b.id);
+  const thirds = matches.filter(m => m.stage === 'THIRD_PLACE');
   if (semis.length >= 2) {
     let third = thirds[0];
-    if (!third) {
-      third = _makeSyntheticMatch('THIRD_PLACE', 0, 89000);
-      matches.push(third);
-    }
+    if (!third) { third = _makeSyntheticMatch('THIRD_PLACE', 0, 89000); matches.push(third); }
     semis.forEach((match, idx) => {
       if (match.status !== 'FINISHED' || !match.score) return;
       const loser = match.score.winner === 'HOME_TEAM' ? match.awayTeam
-                  : match.score.winner === 'AWAY_TEAM' ? match.homeTeam
-                  : null;
+                  : match.score.winner === 'AWAY_TEAM' ? match.homeTeam : null;
       if (!loser) return;
-      _fillSlot(third, idx === 0 ? 'homeTeam' : 'awayTeam', loser);
+      const slot = idx === 0 ? 'homeTeam' : 'awayTeam';
+      if (!_teamHasInfo(third[slot])) third[slot] = { ...loser };
     });
   }
 
