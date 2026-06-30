@@ -101,8 +101,15 @@ function triggerRefresh() {
 
 function scheduleAutoRefresh() {
   clearInterval(State._refreshTimer);
-  // Revisa cada 60 s; solo pide datos si hay partido en vivo
-  State._refreshTimer = setInterval(_liveRefreshTick, 60000);
+  // 30 s cuando hay partidos en vivo/recientes, 90 s en reposo
+  const hasActivity = State.matchesData.some(
+    m => m.status === 'IN_PLAY' || m.status === 'PAUSED' ||
+         (m.status === 'FINISHED' && m.score && m.score.winner)
+  );
+  State._refreshTimer = setTimeout(async () => {
+    await _liveRefreshTick();
+    scheduleAutoRefresh(); // re-programa adaptando el intervalo
+  }, hasActivity ? 30000 : 90000);
 }
 
 async function _liveRefreshTick() {
