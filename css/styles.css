@@ -331,6 +331,20 @@ main { padding: 24px 20px; max-width: 1600px; margin: 0 auto; }
 .pred-badge.wrong   { background: rgba(239,68,68,0.15); color: var(--red); }
 .pred-badge.open    { color: var(--muted); font-size: 0.6rem; }
 
+/* Cómo se resolvió el partido: prórroga o penales */
+.resolve-badge {
+  text-align: center;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  margin: 3px 8px 1px;
+  border-radius: 3px;
+}
+.resolve-badge.pen { color: #f5c518; background: rgba(245,197,24,0.12); }
+.resolve-badge.et  { color: var(--blue); background: rgba(59,130,246,0.12); }
+
 /* ── MODAL ── */
 .modal-overlay {
   display: none;

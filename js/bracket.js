@@ -11,8 +11,32 @@ function renderMatchCard(match) {
   const finished = match.status === 'FINISHED';
   const inPlay   = match.status === 'IN_PLAY' || match.status === 'PAUSED';
   const winner   = match.score && match.score.winner;
-  const hs       = match.score && match.score.fullTime && match.score.fullTime.home;
-  const as_      = match.score && match.score.fullTime && match.score.fullTime.away;
+
+  // Marcador y nota según cómo se resolvió el partido
+  const duration = match.score && match.score.duration; // REGULAR | EXTRA_TIME | PENALTY_SHOOTOUT
+  let hs, as_, resolveHTML = '';
+
+  if (finished && duration === 'PENALTY_SHOOTOUT') {
+    // Empate en 120' → se fue a penales. Mostrar marcador empatado + resultado de penales
+    const tied = (match.score.extraTime && match.score.extraTime.home != null)
+                 ? match.score.extraTime : match.score.fullTime;
+    hs  = tied && tied.home;
+    as_ = tied && tied.away;
+    const ph = match.score.penalties && match.score.penalties.home;
+    const pa = match.score.penalties && match.score.penalties.away;
+    if (ph != null && pa != null) {
+      resolveHTML = `<div class="resolve-badge pen">Penales ${ph}–${pa}</div>`;
+    }
+  } else if (finished && duration === 'EXTRA_TIME') {
+    // Ganó en prórroga (alargue). Mostrar marcador final después de 120'
+    hs  = match.score.extraTime && match.score.extraTime.home;
+    as_ = match.score.extraTime && match.score.extraTime.away;
+    resolveHTML = `<div class="resolve-badge et">Prórroga</div>`;
+  } else {
+    // REGULAR o partido en curso
+    hs  = match.score && match.score.fullTime && match.score.fullTime.home;
+    as_ = match.score && match.score.fullTime && match.score.fullTime.away;
+  }
 
   // Estado de la predicción del usuario actual
   const pred = State.userPredictions[match.id] || null;
@@ -45,11 +69,14 @@ function renderMatchCard(match) {
     ? `<div class="match-venue">📍 ${match.venue}</div>`
     : '';
 
+  const howWon = duration === 'PENALTY_SHOOTOUT' ? ' (pen.)'
+               : duration === 'EXTRA_TIME'       ? ' (p.e.)' : '';
+
   let badgeHTML = '';
   if (!isTBD) {
     const predFlag = getFlagHTMLByName(pred);
     if (predStatus === 'correct') {
-      badgeHTML = `<div class="pred-badge correct">✓ ¡Acertaste! ${predFlag} ${getDisplayName(pred)}</div>`;
+      badgeHTML = `<div class="pred-badge correct">✓ ¡Acertaste! ${predFlag} ${getDisplayName(pred)}${howWon}</div>`;
     } else if (predStatus === 'wrong') {
       badgeHTML = `<div class="pred-badge wrong">✗ Dijiste ${predFlag} ${getDisplayName(pred)}</div>`;
     } else if (pred) {
@@ -79,6 +106,7 @@ function renderMatchCard(match) {
       <span class="team-name${aWinner ? ' winner-name' : ''}">${aDisplay}</span>
       <span class="team-score${aWinner ? ' winner-score' : ''}">${as_ !== null && as_ !== undefined ? as_ : ''}</span>
     </div>
+    ${resolveHTML}
     ${badgeHTML}
   </div>`;
 }
