@@ -159,6 +159,48 @@ function drawConnectors() {
   });
 }
 
+// Reordena los partidos de una ronda para que su posición visual en el bracket
+// coincida con la asignación real de la siguiente ronda.
+// Para cada partido terminado, busca dónde aparece el ganador en `nextRound`
+// y asigna la posición display = idx_next*2 (home) o idx_next*2+1 (away).
+// Los partidos sin ganador confirmado aún se colocan en los huecos restantes.
+function orderRoundForDisplay(from, next) {
+  const fromSorted = [...from].sort((a, b) => a.id - b.id);
+  const nextSorted = [...next].sort((a, b) => a.id - b.id);
+  const n = fromSorted.length;
+
+  // Mapa team_id → posición en el display (0=next[0].home, 1=next[0].away, 2=next[1].home …)
+  const teamDisplayPos = {};
+  nextSorted.forEach((mn, ni) => {
+    if (mn.homeTeam?.id) teamDisplayPos[mn.homeTeam.id] = ni * 2;
+    if (mn.awayTeam?.id) teamDisplayPos[mn.awayTeam.id] = ni * 2 + 1;
+  });
+
+  const result    = new Array(n).fill(null);
+  const placed    = new Set();
+
+  fromSorted.forEach(m => {
+    if (m.status !== 'FINISHED' || !m.score?.winner) return;
+    const winner = m.score.winner === 'HOME_TEAM' ? m.homeTeam : m.awayTeam;
+    if (!winner?.id) return;
+    const pos = teamDisplayPos[winner.id];
+    if (pos !== undefined && pos < n && result[pos] === null) {
+      result[pos] = m;
+      placed.add(m.id);
+    }
+  });
+
+  // Rellenar huecos con los partidos aún sin ganador confirmado (en orden de ID)
+  const remaining = fromSorted.filter(m => !placed.has(m.id));
+  let ri = 0;
+  for (let i = 0; i < n; i++) {
+    if (result[i] === null && ri < remaining.length) {
+      result[i] = remaining[ri++];
+    }
+  }
+  return result.filter(Boolean);
+}
+
 // ── Render principal del bracket ──────────────────────────────────────────
 function renderBracket() {
   const container = document.getElementById('bracket-container');
@@ -186,10 +228,22 @@ function renderBracket() {
       <div class="score-card sc-red"><div class="sc-num">${finished.length - correct.length}</div><div class="sc-label">Incorrectas</div></div>
     </div>` : '';
 
-  // Agrupar y ordenar por id — orden del cuadro oficial (coincide con propagateWinners)
-  const rounds = {};
+  // Agrupar por ronda. LAST_32 se reordena visualmente según la asignación real
+  // de LAST_16 (derivada de los datos de la API), para que las líneas de conexión
+  // sean correctas aunque el bracket no sea secuencial por ID.
+  const byStage = {};
   ROUND_ORDER.forEach(r => {
-    rounds[r] = matches.filter(m => m.stage === r).sort((a, b) => a.id - b.id);
+    byStage[r] = matches.filter(m => m.stage === r).sort((a, b) => a.id - b.id);
+  });
+
+  const rounds = { ...byStage };
+  // Reordenar cada ronda según las asignaciones conocidas de la siguiente
+  const stageOrder = ['LAST_32','LAST_16','QUARTER_FINALS','SEMI_FINALS'];
+  stageOrder.forEach((stage, si) => {
+    const next = byStage[ROUND_ORDER[si + 1]];
+    if (byStage[stage]?.length && next?.length) {
+      rounds[stage] = orderRoundForDisplay(byStage[stage], next);
+    }
   });
 
   const storageLabel = isSupabaseConfigured()
