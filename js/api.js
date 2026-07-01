@@ -90,22 +90,11 @@ function _makeSyntheticMatch(stage, idx, baseId) {
   };
 }
 
-// ── Propagación de ganadores ──────────────────────────────────────────────
-// Estrategia en 2 pasos:
-//
-// PASO 1 — ID matching (método principal, confiable):
-//   La API frecuentemente devuelve el slot del ganador en la siguiente ronda
-//   como { id: X, name: null, tla: null }. Construimos un mapa teamId→datos
-//   completos y rellenamos esos slots vacíos. Esto es 100% correcto porque
-//   la API ya asignó el equipo correcto; solo le falta el nombre/tla.
-//
-// PASO 2 — Posición por índice (fallback):
-//   Cuando la API no asigna el equipo en absoluto (slot null/undefined),
-//   usamos la posición ordenada por id para inferir la llave. Menos confiable
-//   pero cubre el caso donde la API aún no actualizó.
+// Propagación solo por ID de equipo.
+// La API asigna el ganador al siguiente partido con { id: X, name: null } primero;
+// aquí resolvemos ese estado intermedio. NO propagamos por posición/índice porque
+// el bracket del Mundial 2026 no es secuencial y causaría equipos en slot incorrecto.
 function propagateWinners(matches) {
-
-  // ── PASO 1: rellena slots con id pero sin nombre ──────────────────────
   const teamById = {};
   matches.forEach(m => {
     [m.homeTeam, m.awayTeam].forEach(t => {
@@ -117,69 +106,11 @@ function propagateWinners(matches) {
     ['homeTeam', 'awayTeam'].forEach(slot => {
       const t = m[slot];
       if (t && t.id && !t.name && !t.tla && teamById[t.id]) {
-        const known = teamById[t.id];
-        m[slot] = { ...t, name: known.name, tla: known.tla,
-                    shortName: known.shortName, crest: known.crest };
+        const k = teamById[t.id];
+        m[slot] = { ...t, name: k.name, tla: k.tla, shortName: k.shortName, crest: k.crest };
       }
     });
   });
-
-  // ── PASO 2: rellena slots completamente vacíos por posición ──────────
-  const stageOrder = ['LAST_32','LAST_16','QUARTER_FINALS','SEMI_FINALS','FINAL'];
-
-  for (let si = 0; si < stageOrder.length - 1; si++) {
-    const fromStage = stageOrder[si];
-    const toStage   = stageOrder[si + 1];
-
-    const from = matches.filter(m => m.stage === fromStage).sort((a, b) => a.id - b.id);
-    if (!from.some(m => m.status === 'FINISHED')) continue;
-
-    let to = matches.filter(m => m.stage === toStage).sort((a, b) => a.id - b.id);
-
-    if (to.length === 0) {
-      const needed = Math.ceil(from.length / 2);
-      for (let i = 0; i < needed; i++) {
-        const sm = _makeSyntheticMatch(toStage, i, 80000 + si * 1000);
-        matches.push(sm);
-        to.push(sm);
-      }
-    }
-
-    from.forEach((match, idx) => {
-      if (match.status !== 'FINISHED' || !match.score) return;
-      const winner = match.score.winner === 'HOME_TEAM' ? match.homeTeam
-                   : match.score.winner === 'AWAY_TEAM' ? match.awayTeam : null;
-      if (!winner) return;
-
-      // No duplicar: si el ganador ya está en algún slot de la siguiente ronda, omitir
-      const alreadyPlaced = to.some(m => _sameTeam(m.homeTeam, winner) || _sameTeam(m.awayTeam, winner));
-      if (alreadyPlaced) return;
-
-      const toMatch = to[Math.floor(idx / 2)];
-      if (!toMatch) return;
-      const slot = idx % 2 === 0 ? 'homeTeam' : 'awayTeam';
-      if (!_teamHasInfo(toMatch[slot])) {
-        const ex = toMatch[slot];
-        toMatch[slot] = ex ? { ...ex, ...winner } : { ...winner };
-      }
-    });
-  }
-
-  // Perdedores de semis → 3er lugar
-  const semis  = matches.filter(m => m.stage === 'SEMI_FINALS').sort((a, b) => a.id - b.id);
-  const thirds = matches.filter(m => m.stage === 'THIRD_PLACE');
-  if (semis.length >= 2) {
-    let third = thirds[0];
-    if (!third) { third = _makeSyntheticMatch('THIRD_PLACE', 0, 89000); matches.push(third); }
-    semis.forEach((match, idx) => {
-      if (match.status !== 'FINISHED' || !match.score) return;
-      const loser = match.score.winner === 'HOME_TEAM' ? match.awayTeam
-                  : match.score.winner === 'AWAY_TEAM' ? match.homeTeam : null;
-      if (!loser) return;
-      const slot = idx === 0 ? 'homeTeam' : 'awayTeam';
-      if (!_teamHasInfo(third[slot])) third[slot] = { ...loser };
-    });
-  }
 
   return matches;
 }
