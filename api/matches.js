@@ -88,22 +88,50 @@ function sameTeam(a, b) {
   return false;
 }
 
-// Propagación solo por ID de equipo.
-// La API asigna el ganador al siguiente partido con { id: X, name: null } primero,
-// luego lo actualiza con el nombre completo. Aquí resolvemos ese estado intermedio.
-// NO usamos propagación por posición/índice — el bracket del Mundial 2026 no es
-// simplemente secuencial por ID y causaría equipos en posiciones incorrectas.
+// Reordena 'from' para que las posiciones de display coincidan con la siguiente
+// ronda — igual que orderRoundForDisplay en bracket.js.
+// Los partidos con ganador confirmado en 'to' se ubican primero (en su slot real),
+// los demás llenan los huecos en orden de ID.
+function orderForPropagation(from, to) {
+  const teamPos = {};
+  to.forEach((mn, ni) => {
+    if (mn.homeTeam && mn.homeTeam.id) teamPos[mn.homeTeam.id] = ni * 2;
+    if (mn.awayTeam && mn.awayTeam.id) teamPos[mn.awayTeam.id] = ni * 2 + 1;
+  });
+
+  const n = from.length;
+  const result  = new Array(n).fill(null);
+  const placed  = new Set();
+
+  from.forEach(m => {
+    if (m.status !== 'FINISHED' || !m.score || !m.score.winner) return;
+    const w = m.score.winner === 'HOME_TEAM' ? m.homeTeam : m.awayTeam;
+    if (!w || !w.id) return;
+    const pos = teamPos[w.id];
+    if (pos !== undefined && pos < n && result[pos] === null) {
+      result[pos] = m;
+      placed.add(m.id);
+    }
+  });
+
+  const remaining = from.filter(m => !placed.has(m.id));
+  let ri = 0;
+  for (let i = 0; i < n; i++) {
+    if (result[i] === null && ri < remaining.length) result[i] = remaining[ri++];
+  }
+  return result.filter(Boolean);
+}
+
 function propagateWinners(matches) {
 
-  // Construir mapa teamId → datos completos desde todos los partidos
+  // ── PASO 1: id-based ─────────────────────────────────────────────────
+  // Resuelve slots { id:X, name:null } que la API crea como estado intermedio
   const byId = {};
   matches.forEach(m => {
     [m.homeTeam, m.awayTeam].forEach(t => {
       if (t && t.id && (t.name || t.tla)) byId[t.id] = t;
     });
   });
-
-  // Rellenar slots que tienen id pero no nombre/tla
   matches.forEach(m => {
     ['homeTeam', 'awayTeam'].forEach(slot => {
       const t = m[slot];
@@ -113,6 +141,38 @@ function propagateWinners(matches) {
       }
     });
   });
+
+  // ── PASO 2: posición-based (con orden de bracket correcto) ────────────
+  // Reordena LAST_32 según la asignación real de LAST_16 (confirmada por la API),
+  // luego aplica pares secuenciales. El alreadyPlaced previene duplicados cuando
+  // PASO 1 ya colocó al equipo (o la API ya lo asignó con nombre completo).
+  const stageOrder = ['LAST_32','LAST_16','QUARTER_FINALS','SEMI_FINALS','FINAL'];
+
+  for (let si = 0; si < stageOrder.length - 1; si++) {
+    const from = matches.filter(m => m.stage === stageOrder[si]).sort((a, b) => a.id - b.id);
+    const to   = matches.filter(m => m.stage === stageOrder[si + 1]).sort((a, b) => a.id - b.id);
+    if (!from.length || !to.length) continue;
+    if (!from.some(m => m.status === 'FINISHED' && m.score && m.score.winner)) continue;
+
+    const ordered = orderForPropagation(from, to);
+
+    ordered.forEach((match, idx) => {
+      if (!match || match.status !== 'FINISHED' || !match.score || !match.score.winner) return;
+      const winner = match.score.winner === 'HOME_TEAM' ? match.homeTeam : match.awayTeam;
+      if (!hasInfo(winner)) return;
+
+      // Si ya está en cualquier slot de la siguiente ronda, no duplicar
+      if (to.some(m => sameTeam(m.homeTeam, winner) || sameTeam(m.awayTeam, winner))) return;
+
+      const toMatch = to[Math.floor(idx / 2)];
+      if (!toMatch) return;
+      const slot = idx % 2 === 0 ? 'homeTeam' : 'awayTeam';
+      if (!hasInfo(toMatch[slot])) {
+        toMatch[slot] = { id: winner.id, name: winner.name, tla: winner.tla,
+                          shortName: winner.shortName, crest: winner.crest };
+      }
+    });
+  }
 
   return matches;
 }

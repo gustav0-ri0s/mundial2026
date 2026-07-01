@@ -90,18 +90,38 @@ function _makeSyntheticMatch(stage, idx, baseId) {
   };
 }
 
-// Propagación solo por ID de equipo.
-// La API asigna el ganador al siguiente partido con { id: X, name: null } primero;
-// aquí resolvemos ese estado intermedio. NO propagamos por posición/índice porque
-// el bracket del Mundial 2026 no es secuencial y causaría equipos en slot incorrecto.
+// Ordena 'from' por posición real de bracket (igual que orderRoundForDisplay)
+function _orderForProp(from, to) {
+  const teamPos = {};
+  to.forEach((mn, ni) => {
+    if (mn.homeTeam && mn.homeTeam.id) teamPos[mn.homeTeam.id] = ni * 2;
+    if (mn.awayTeam && mn.awayTeam.id) teamPos[mn.awayTeam.id] = ni * 2 + 1;
+  });
+  const n = from.length;
+  const result = new Array(n).fill(null);
+  const placed = new Set();
+  from.forEach(m => {
+    if (m.status !== 'FINISHED' || !m.score || !m.score.winner) return;
+    const w = m.score.winner === 'HOME_TEAM' ? m.homeTeam : m.awayTeam;
+    if (!w || !w.id) return;
+    const pos = teamPos[w.id];
+    if (pos !== undefined && pos < n && result[pos] === null) { result[pos] = m; placed.add(m.id); }
+  });
+  const rem = from.filter(m => !placed.has(m.id));
+  let ri = 0;
+  for (let i = 0; i < n; i++) { if (result[i] === null && ri < rem.length) result[i] = rem[ri++]; }
+  return result.filter(Boolean);
+}
+
 function propagateWinners(matches) {
+
+  // PASO 1: resuelve { id:X, name:null } que la API crea como estado intermedio
   const teamById = {};
   matches.forEach(m => {
     [m.homeTeam, m.awayTeam].forEach(t => {
       if (t && t.id && (t.name || t.tla)) teamById[t.id] = t;
     });
   });
-
   matches.forEach(m => {
     ['homeTeam', 'awayTeam'].forEach(slot => {
       const t = m[slot];
@@ -111,6 +131,30 @@ function propagateWinners(matches) {
       }
     });
   });
+
+  // PASO 2: posición-based con orden correcto de bracket
+  const stageOrder = ['LAST_32','LAST_16','QUARTER_FINALS','SEMI_FINALS','FINAL'];
+  for (let si = 0; si < stageOrder.length - 1; si++) {
+    const from = matches.filter(m => m.stage === stageOrder[si]).sort((a, b) => a.id - b.id);
+    const to   = matches.filter(m => m.stage === stageOrder[si + 1]).sort((a, b) => a.id - b.id);
+    if (!from.length || !to.length) continue;
+    if (!from.some(m => m.status === 'FINISHED' && m.score && m.score.winner)) continue;
+
+    const ordered = _orderForProp(from, to);
+    ordered.forEach((match, idx) => {
+      if (!match || match.status !== 'FINISHED' || !match.score || !match.score.winner) return;
+      const winner = match.score.winner === 'HOME_TEAM' ? match.homeTeam : match.awayTeam;
+      if (!_teamHasInfo(winner)) return;
+      if (to.some(m => _sameTeam(m.homeTeam, winner) || _sameTeam(m.awayTeam, winner))) return;
+      const toMatch = to[Math.floor(idx / 2)];
+      if (!toMatch) return;
+      const slot = idx % 2 === 0 ? 'homeTeam' : 'awayTeam';
+      if (!_teamHasInfo(toMatch[slot])) {
+        const ex = toMatch[slot];
+        toMatch[slot] = ex ? { ...ex, ...winner } : { ...winner };
+      }
+    });
+  }
 
   return matches;
 }
