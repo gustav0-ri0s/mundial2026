@@ -79,6 +79,15 @@ function hasInfo(team) {
   return team && (team.name || team.tla);
 }
 
+// Dos equipos son el mismo si coinciden por id, tla o nombre
+function sameTeam(a, b) {
+  if (!hasInfo(a) || !hasInfo(b)) return false;
+  if (a.id   && b.id   && a.id   === b.id)   return true;
+  if (a.tla  && b.tla  && a.tla  === b.tla)  return true;
+  if (a.name && b.name && a.name === b.name)  return true;
+  return false;
+}
+
 // Propagación completa en dos pasos:
 // PASO 1 — Por ID de equipo: si LAST_16 tiene { id:X, name:null }, busca X en otros partidos.
 //           La API aveces asigna el id del ganador antes de poner el nombre.
@@ -125,11 +134,17 @@ function propagateWinners(matches) {
                    : match.score.winner === 'AWAY_TEAM' ? match.awayTeam : null;
       if (!hasInfo(winner)) return;
 
+      // Si el ganador ya está en cualquier slot de la siguiente ronda
+      // (colocado por la API o por PASO 1), no lo duplicamos.
+      const alreadyPlaced = to.some(m =>
+        sameTeam(m.homeTeam, winner) || sameTeam(m.awayTeam, winner)
+      );
+      if (alreadyPlaced) return;
+
       const toMatch = to[Math.floor(idx / 2)];
       if (!toMatch) return;
       const slot = idx % 2 === 0 ? 'homeTeam' : 'awayTeam';
 
-      // Solo rellenar si el slot no tiene datos útiles aún
       if (!hasInfo(toMatch[slot])) {
         toMatch[slot] = { id: winner.id, name: winner.name, tla: winner.tla,
                           shortName: winner.shortName, crest: winner.crest };

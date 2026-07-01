@@ -73,6 +73,14 @@ function clearMatchesCache() {
 
 function _teamHasInfo(t) { return t && (t.name || t.tla); }
 
+function _sameTeam(a, b) {
+  if (!_teamHasInfo(a) || !_teamHasInfo(b)) return false;
+  if (a.id   && b.id   && a.id   === b.id)   return true;
+  if (a.tla  && b.tla  && a.tla  === b.tla)  return true;
+  if (a.name && b.name && a.name === b.name)  return true;
+  return false;
+}
+
 function _makeSyntheticMatch(stage, idx, baseId) {
   return {
     id: baseId + idx, utcDate: null, stage,
@@ -142,6 +150,10 @@ function propagateWinners(matches) {
       const winner = match.score.winner === 'HOME_TEAM' ? match.homeTeam
                    : match.score.winner === 'AWAY_TEAM' ? match.awayTeam : null;
       if (!winner) return;
+
+      // No duplicar: si el ganador ya está en algún slot de la siguiente ronda, omitir
+      const alreadyPlaced = to.some(m => _sameTeam(m.homeTeam, winner) || _sameTeam(m.awayTeam, winner));
+      if (alreadyPlaced) return;
 
       const toMatch = to[Math.floor(idx / 2)];
       if (!toMatch) return;
